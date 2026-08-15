@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Device.Api/Device.Api.csproj" Id="3b6a9d38-d30b-47d5-9a46-d092877d56ae" />
+  <Project Path="Device.Tests/Device.Tests.csproj" Id="da01ec96-7e69-4f94-a3ad-dd90ea9d97d6" />
+</Solution>

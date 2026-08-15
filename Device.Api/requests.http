@@ -1,0 +1,11 @@
+@host = https://localhost:7212
+
+GET {{host}}/device/status
+
+###
+
+POST {{host}}/simulator/connect
+
+###
+
+GET {{host}}/device/status
