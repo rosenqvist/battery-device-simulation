@@ -33,4 +33,11 @@ public sealed class DeviceSimulator
         return GetStatus();
     }
 
+    public DeviceStatus Disconnect()
+    {
+        Mode = DeviceMode.Offline;
+
+        return GetStatus();
+    }
+
 }

@@ -23,6 +23,11 @@ app.MapPost("/simulator/connect", (DeviceSimulator device) =>
     return Results.Ok(device.Connect());
 });
 
+app.MapPost("/simulator/disconnect", (DeviceSimulator device) =>
+{
+    return Results.Ok(device.Disconnect());
+});
+
 app.Run();
 
 public partial class Program
