@@ -52,4 +52,26 @@ public sealed class DeviceApiTests
         Assert.Equal(DeviceMode.Idle, status.Mode);
         Assert.True(status.Connected);
     }
+
+    [Fact]
+    public async Task Disconnect_WhenConnected_ChangesDeviceToOffline()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        await client.PostAsync("/simulator/connect", null);
+
+        var response = await client.PostAsync(
+            "/simulator/disconnect",
+            null);
+
+        response.EnsureSuccessStatusCode();
+
+        var status = await response.Content
+            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
+
+        Assert.NotNull(status);
+        Assert.Equal(DeviceMode.Offline, status.Mode);
+        Assert.False(status.Connected);
+    }
 }
