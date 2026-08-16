@@ -1,5 +1,6 @@
 ﻿using Device.Api;
 using Microsoft.AspNetCore.Mvc.Testing;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -73,5 +74,92 @@ public sealed class DeviceApiTests
         Assert.NotNull(status);
         Assert.Equal(DeviceMode.Offline, status.Mode);
         Assert.False(status.Connected);
+    }
+
+    [Fact]
+    public async Task SetBattery_WithValidPercentage_UpdatesBattery()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(
+            "/simulator/battery/75",
+            content: null);
+
+        response.EnsureSuccessStatusCode();
+
+        var status = await response.Content
+            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
+
+        Assert.NotNull(status);
+        Assert.Equal(75, status.BatteryPercentage);
+    }
+
+    [Fact]
+    public async Task SetBattery_Above100_ReturnsBadRequest()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(
+            "/simulator/battery/101",
+            content: null);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SetBattery_Below0_ReturnsBadRequest()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(
+            "/simulator/battery/-1",
+            content: null);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SetBattery_With0Percent_UpdatesBattery()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(
+            "/simulator/battery/0",
+            content: null);
+
+        response.EnsureSuccessStatusCode();
+
+        var status = await response.Content
+            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
+
+        Assert.NotNull(status);
+        Assert.Equal(0, status.BatteryPercentage);
+    }
+
+    [Fact]
+    public async Task SetBattery_With100Percent_UpdatesBattery()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(
+            "/simulator/battery/100",
+            content: null);
+
+        response.EnsureSuccessStatusCode();
+
+        var status = await response.Content
+            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
+
+        Assert.NotNull(status);
+        Assert.Equal(100, status.BatteryPercentage);
     }
 }
