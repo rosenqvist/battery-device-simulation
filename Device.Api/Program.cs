@@ -28,6 +28,21 @@ app.MapPost("/simulator/disconnect", (DeviceSimulator device) =>
     return Results.Ok(device.Disconnect());
 });
 
+app.MapPost("/simulator/battery/{percentage:int}", (
+    int percentage,
+    DeviceSimulator device) =>
+{
+    try
+    {
+        return Results.Ok(device.SetBattery(percentage));
+    }
+    catch (ArgumentOutOfRangeException)
+    {
+        return Results.BadRequest(
+            "Battery percentage must be between 0 and 100.");
+    }
+});
+
 app.Run();
 
 public partial class Program

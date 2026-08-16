@@ -40,4 +40,15 @@ public sealed class DeviceSimulator
         return GetStatus();
     }
 
+    public DeviceStatus SetBattery(int batteryPercentage)
+    { 
+        if (batteryPercentage < 0 || batteryPercentage > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(batteryPercentage), "Battery percentage must be between 0 and 100.");
+        }
+        
+        BatteryPercent = batteryPercentage;
+
+        return GetStatus();
+    }
 }
