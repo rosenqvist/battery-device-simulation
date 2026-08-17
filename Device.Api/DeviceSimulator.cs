@@ -64,6 +64,33 @@ public sealed class DeviceSimulator
         return GetStatus();
     }
 
+    public DeviceStatus Fault()
+    {
+        if (Mode != DeviceMode.Idle &&
+            Mode != DeviceMode.Running)
+        {
+            throw new InvalidOperationException(
+                "Device must be idle or running before faulting.");
+        }
+
+        Mode = DeviceMode.Faulted;
+
+        return GetStatus();
+    }
+
+    public DeviceStatus Reset()
+    {
+        if (Mode != DeviceMode.Faulted)
+        {
+            throw new InvalidOperationException(
+                "Device must be faulted before resetting.");
+        }
+
+        Mode = DeviceMode.Offline;
+
+        return GetStatus();
+    }
+
     public DeviceStatus Disconnect()
     {
         if (Mode == DeviceMode.Running)
