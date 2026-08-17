@@ -330,4 +330,36 @@ public sealed class DeviceApiTests
             HttpStatusCode.Conflict,
             response.StatusCode);
     }
+
+    [Fact]
+    public async Task Disconnect_WhenRunning_ChangesDeviceToOffline()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        var connectResponse = await client.PostAsync(
+            "/simulator/connect",
+            content: null);
+
+        connectResponse.EnsureSuccessStatusCode();
+
+        var startResponse = await client.PostAsync(
+            "/simulator/start",
+            content: null);
+
+        startResponse.EnsureSuccessStatusCode();
+
+        var response = await client.PostAsync(
+            "/simulator/disconnect",
+            content: null);
+
+        response.EnsureSuccessStatusCode();
+
+        var status = await response.Content
+            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
+
+        Assert.NotNull(status);
+        Assert.Equal(DeviceMode.Offline, status.Mode);
+        Assert.False(status.Connected);
+    }
 }
