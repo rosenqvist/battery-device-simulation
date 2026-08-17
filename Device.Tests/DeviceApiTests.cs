@@ -262,4 +262,72 @@ public sealed class DeviceApiTests
         Assert.Equal(DeviceMode.Running, status.Mode);
         Assert.Equal(5, status.BatteryPercentage);
     }
+
+    [Fact]
+    public async Task Stop_WhenRunning_ChangesDeviceToIdle()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        var connectResponse = await client.PostAsync(
+            "/simulator/connect",
+            content: null);
+
+        connectResponse.EnsureSuccessStatusCode();
+
+        var startResponse = await client.PostAsync(
+            "/simulator/start",
+            content: null);
+
+        startResponse.EnsureSuccessStatusCode();
+
+        var response = await client.PostAsync(
+            "/simulator/stop",
+            content: null);
+
+        response.EnsureSuccessStatusCode();
+
+        var status = await response.Content
+            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
+
+        Assert.NotNull(status);
+        Assert.Equal(DeviceMode.Idle, status.Mode);
+        Assert.True(status.Connected);
+    }
+
+    [Fact]
+    public async Task Stop_WhenIdle_ReturnsConflict()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        var connectResponse = await client.PostAsync(
+            "/simulator/connect",
+            content: null);
+
+        connectResponse.EnsureSuccessStatusCode();
+
+        var response = await client.PostAsync(
+            "/simulator/stop",
+            content: null);
+
+        Assert.Equal(
+            HttpStatusCode.Conflict,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Stop_WhenOffline_ReturnsConflict()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(
+            "/simulator/stop",
+            content: null);
+
+        Assert.Equal(
+            HttpStatusCode.Conflict,
+            response.StatusCode);
+    }
 }
