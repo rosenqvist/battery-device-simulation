@@ -23,6 +23,18 @@ app.MapPost("/simulator/connect", (DeviceSimulator device) =>
     return Results.Ok(device.Connect());
 });
 
+app.MapPost("/simulator/start", (DeviceSimulator device) =>
+{
+    try
+    {
+        return Results.Ok(device.Start());
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(ex.Message);
+    }
+});
+
 app.MapPost("/simulator/disconnect", (DeviceSimulator device) =>
 {
     return Results.Ok(device.Disconnect());
