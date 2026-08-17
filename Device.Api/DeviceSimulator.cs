@@ -66,6 +66,11 @@ public sealed class DeviceSimulator
     }
     public DeviceStatus Disconnect()
     {
+        if (Mode == DeviceMode.Running)
+        {
+            Stop();
+        }
+
         Mode = DeviceMode.Offline;
 
         return GetStatus();
