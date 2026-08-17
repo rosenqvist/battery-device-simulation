@@ -48,6 +48,30 @@ app.MapPost("/simulator/stop", (DeviceSimulator device) =>
     }
 });
 
+app.MapPost("/simulator/fault", (DeviceSimulator device) =>
+{
+    try
+    {
+        return Results.Ok(device.Fault());
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(ex.Message);
+    }
+});
+
+app.MapPost("/simulator/reset", (DeviceSimulator device) =>
+{
+    try
+    {
+        return Results.Ok(device.Reset());
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(ex.Message);
+    }
+});
+
 app.MapPost("/simulator/disconnect", (DeviceSimulator device) =>
 {
     return Results.Ok(device.Disconnect());
