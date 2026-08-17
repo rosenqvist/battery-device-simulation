@@ -52,6 +52,18 @@ public sealed class DeviceSimulator
         return GetStatus();
     }
 
+    public DeviceStatus Stop()
+    {
+        if (Mode != DeviceMode.Running)
+        {
+            throw new InvalidOperationException(
+                "Device must be running before stopping.");
+        }
+
+        Mode = DeviceMode.Idle;
+
+        return GetStatus();
+    }
     public DeviceStatus Disconnect()
     {
         Mode = DeviceMode.Offline;
