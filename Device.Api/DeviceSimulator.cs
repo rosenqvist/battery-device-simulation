@@ -27,7 +27,6 @@ public sealed class DeviceSimulator
 
     public DeviceStatus Connect()
     {
-
         Mode = DeviceMode.Idle;
 
         return GetStatus();
@@ -64,6 +63,7 @@ public sealed class DeviceSimulator
 
         return GetStatus();
     }
+
     public DeviceStatus Disconnect()
     {
         if (Mode == DeviceMode.Running)
@@ -80,7 +80,9 @@ public sealed class DeviceSimulator
     {
         if (batteryPercentage < 0 || batteryPercentage > 100)
         {
-            throw new ArgumentOutOfRangeException(nameof(batteryPercentage), "Battery percentage must be between 0 and 100.");
+            throw new ArgumentOutOfRangeException(
+                nameof(batteryPercentage),
+                "Battery percentage must be between 0 and 100.");
         }
 
         BatteryPercentage = batteryPercentage;
