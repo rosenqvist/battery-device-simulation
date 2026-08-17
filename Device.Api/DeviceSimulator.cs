@@ -41,10 +41,10 @@ public sealed class DeviceSimulator
                 "Device must be idle before starting.");
         }
 
-        if (BatteryPercentage < 5) 
+        if (BatteryPercentage < 5)
         {
             throw new InvalidOperationException(
-                "Battery must be at least 5% to start."); 
+                "Battery must be at least 5% to start.");
         }
 
         Mode = DeviceMode.Running;
@@ -77,12 +77,12 @@ public sealed class DeviceSimulator
     }
 
     public DeviceStatus SetBattery(int batteryPercentage)
-    { 
+    {
         if (batteryPercentage < 0 || batteryPercentage > 100)
         {
             throw new ArgumentOutOfRangeException(nameof(batteryPercentage), "Battery percentage must be between 0 and 100.");
         }
-        
+
         BatteryPercentage = batteryPercentage;
 
         return GetStatus();

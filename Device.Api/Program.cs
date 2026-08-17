@@ -1,5 +1,6 @@
-using Device.Api;
 using System.Text.Json.Serialization;
+
+using Device.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 
