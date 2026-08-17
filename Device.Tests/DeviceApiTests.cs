@@ -162,4 +162,104 @@ public sealed class DeviceApiTests
         Assert.NotNull(status);
         Assert.Equal(100, status.BatteryPercentage);
     }
+
+    [Fact]
+    public async Task Start_WhenIdle_ChangesDeviceToRunning()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        var connectResponse = await client.PostAsync(
+            "/simulator/connect",
+            content: null);
+
+        connectResponse.EnsureSuccessStatusCode();
+
+        var response = await client.PostAsync(
+            "/simulator/start",
+            content: null);
+
+        response.EnsureSuccessStatusCode();
+
+        var status = await response.Content
+            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
+
+        Assert.NotNull(status);
+        Assert.Equal(DeviceMode.Running, status.Mode);
+        Assert.True(status.Connected);
+    }
+
+    [Fact]
+    public async Task Start_WhenOffline_ReturnsConflict()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(
+            "/simulator/start",
+            content: null);
+
+        Assert.Equal(
+            HttpStatusCode.Conflict,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Start_WhenBatteryBelow5Percent_ReturnsConflict()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        var connectResponse = await client.PostAsync(
+            "/simulator/connect",
+            content: null);
+
+        connectResponse.EnsureSuccessStatusCode();
+
+        var batteryResponse = await client.PostAsync(
+            "/simulator/battery/4",
+            content: null);
+
+        batteryResponse.EnsureSuccessStatusCode();
+
+        var response = await client.PostAsync(
+            "/simulator/start",
+            content: null);
+
+        Assert.Equal(
+            HttpStatusCode.Conflict,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Start_With5PercentBattery_Succeeds()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        var connectResponse = await client.PostAsync(
+            "/simulator/connect",
+            content: null);
+
+        connectResponse.EnsureSuccessStatusCode();
+
+        var batteryResponse = await client.PostAsync(
+            "/simulator/battery/5",
+            content: null);
+
+        batteryResponse.EnsureSuccessStatusCode();
+
+        var response = await client.PostAsync(
+            "/simulator/start",
+            content: null);
+
+        response.EnsureSuccessStatusCode();
+
+        var status = await response.Content
+            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
+
+        Assert.NotNull(status);
+        Assert.Equal(DeviceMode.Running, status.Mode);
+        Assert.Equal(5, status.BatteryPercentage);
+    }
 }
