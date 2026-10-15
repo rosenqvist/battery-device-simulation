@@ -27,6 +27,12 @@ public sealed class DeviceSimulator
 
     public DeviceStatus Connect()
     {
+        if (Mode == DeviceMode.Faulted)
+        {
+            throw new InvalidOperationException(
+                "Device is faulted and must be reset before connecting.");
+        }
+
         Mode = DeviceMode.Idle;
 
         return GetStatus();

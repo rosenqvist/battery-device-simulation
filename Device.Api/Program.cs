@@ -21,7 +21,14 @@ app.MapGet("/device/status", (DeviceSimulator device) =>
 
 app.MapPost("/simulator/connect", (DeviceSimulator device) =>
 {
-    return Results.Ok(device.Connect());
+    try
+    {
+        return Results.Ok(device.Connect());
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(ex.Message);
+    }
 });
 
 app.MapPost("/simulator/start", (DeviceSimulator device) =>

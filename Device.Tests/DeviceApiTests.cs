@@ -60,6 +60,33 @@ public sealed class DeviceApiTests
         Assert.True(status.Connected);
     }
 
+    [Fact]
+    public async Task Connect_WhenFaulted_ReturnsConflict()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        var connectResponse = await client.PostAsync(
+            "/simulator/connect",
+            content: null);
+
+        connectResponse.EnsureSuccessStatusCode();
+
+        var faultResponse = await client.PostAsync(
+            "/simulator/fault",
+            content: null);
+
+        faultResponse.EnsureSuccessStatusCode();
+
+        var response = await client.PostAsync(
+            "/simulator/connect",
+            content: null);
+
+        Assert.Equal(
+            HttpStatusCode.Conflict,
+            response.StatusCode);
+    }
+
     // Start
 
     [Fact]
