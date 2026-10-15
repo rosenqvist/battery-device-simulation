@@ -33,6 +33,11 @@ public sealed class DeviceSimulator
                 "Device is faulted and must be reset before connecting.");
         }
 
+        if (Mode != DeviceMode.Offline)
+        {
+            return GetStatus();
+        }
+
         Mode = DeviceMode.Idle;
 
         return GetStatus();
