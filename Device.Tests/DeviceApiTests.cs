@@ -350,6 +350,50 @@ public sealed class DeviceApiTests
         Assert.False(status.Connected);
     }
 
+    [Fact]
+    public async Task Disconnect_WhenFaulted_PowerCyclesDevice()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        var connectResponse = await client.PostAsync(
+            "/simulator/connect",
+            content: null);
+
+        connectResponse.EnsureSuccessStatusCode();
+
+        var faultResponse = await client.PostAsync(
+            "/simulator/fault",
+            content: null);
+
+        faultResponse.EnsureSuccessStatusCode();
+
+        var disconnectResponse = await client.PostAsync(
+            "/simulator/disconnect",
+            content: null);
+
+        disconnectResponse.EnsureSuccessStatusCode();
+
+        var disconnected = await disconnectResponse.Content
+            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
+
+        Assert.NotNull(disconnected);
+        Assert.Equal(DeviceMode.Offline, disconnected.Mode);
+        Assert.False(disconnected.Connected);
+
+        var reconnectResponse = await client.PostAsync(
+            "/simulator/connect",
+            content: null);
+
+        reconnectResponse.EnsureSuccessStatusCode();
+
+        var reconnected = await reconnectResponse.Content
+            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
+
+        Assert.NotNull(reconnected);
+        Assert.Equal(DeviceMode.Idle, reconnected.Mode);
+    }
+
     // Battery
 
     [Fact]
