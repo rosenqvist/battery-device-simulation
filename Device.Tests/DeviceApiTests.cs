@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Device.Tests;
 
-public sealed class DeviceApiTests
+public sealed class DeviceApiTests : IDisposable
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -20,19 +20,28 @@ public sealed class DeviceApiTests
         }
     };
 
+    private readonly WebApplicationFactory<Program> _factory;
+    private readonly HttpClient _client;
+
+    public DeviceApiTests()
+    {
+        _factory = new WebApplicationFactory<Program>();
+        _client = _factory.CreateClient();
+    }
+
+    public void Dispose()
+    {
+        _client.Dispose();
+        _factory.Dispose();
+    }
+
     // Initial state
 
     [Fact]
     public async Task NewDevice_IsOfflineWith50PercentBattery()
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        var status = await GetDeviceStatus();
 
-        var status = await client.GetFromJsonAsync<DeviceStatus>(
-            "/device/status",
-            JsonOptions);
-
-        Assert.NotNull(status);
         Assert.Equal(DeviceMode.Offline, status.Mode);
         Assert.Equal(50, status.BatteryPercentage);
         Assert.False(status.Connected);
@@ -43,19 +52,8 @@ public sealed class DeviceApiTests
     [Fact]
     public async Task Connect_WhenOffline_ChangesDeviceToIdle()
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        var status = await PostOk("/simulator/connect");
 
-        var response = await client.PostAsync(
-            "/simulator/connect",
-            content: null);
-
-        response.EnsureSuccessStatusCode();
-
-        var status = await response.Content
-            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
-
-        Assert.NotNull(status);
         Assert.Equal(DeviceMode.Idle, status.Mode);
         Assert.True(status.Connected);
     }
@@ -63,58 +61,23 @@ public sealed class DeviceApiTests
     [Fact]
     public async Task Connect_WhenFaulted_ReturnsConflict()
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        await PostOk("/simulator/connect");
+        await PostOk("/simulator/fault");
 
-        var connectResponse = await client.PostAsync(
-            "/simulator/connect",
-            content: null);
+        var statusCode = await PostForStatusCode("/simulator/connect");
 
-        connectResponse.EnsureSuccessStatusCode();
-
-        var faultResponse = await client.PostAsync(
-            "/simulator/fault",
-            content: null);
-
-        faultResponse.EnsureSuccessStatusCode();
-
-        var response = await client.PostAsync(
-            "/simulator/connect",
-            content: null);
-
-        Assert.Equal(
-            HttpStatusCode.Conflict,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, statusCode);
     }
 
     [Fact]
     public async Task Connect_WhenRunning_KeepsRunning()
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        await PostOk("/simulator/connect");
+        await PostOk("/simulator/start");
+        await PostOk("/simulator/connect");
 
-        var connectResponse = await client.PostAsync(
-            "/simulator/connect",
-            content: null);
+        var status = await GetDeviceStatus();
 
-        connectResponse.EnsureSuccessStatusCode();
-
-        var startResponse = await client.PostAsync(
-            "/simulator/start",
-            content: null);
-
-        startResponse.EnsureSuccessStatusCode();
-
-        var response = await client.PostAsync(
-            "/simulator/connect",
-            content: null);
-
-        response.EnsureSuccessStatusCode();
-
-        var status = await response.Content
-            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
-
-        Assert.NotNull(status);
         Assert.Equal(DeviceMode.Running, status.Mode);
     }
 
@@ -123,25 +86,10 @@ public sealed class DeviceApiTests
     [Fact]
     public async Task Start_WhenIdle_ChangesDeviceToRunning()
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        await PostOk("/simulator/connect");
 
-        var connectResponse = await client.PostAsync(
-            "/simulator/connect",
-            content: null);
+        var status = await PostOk("/simulator/start");
 
-        connectResponse.EnsureSuccessStatusCode();
-
-        var response = await client.PostAsync(
-            "/simulator/start",
-            content: null);
-
-        response.EnsureSuccessStatusCode();
-
-        var status = await response.Content
-            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
-
-        Assert.NotNull(status);
         Assert.Equal(DeviceMode.Running, status.Mode);
         Assert.True(status.Connected);
     }
@@ -149,73 +97,30 @@ public sealed class DeviceApiTests
     [Fact]
     public async Task Start_WhenOffline_ReturnsConflict()
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        var statusCode = await PostForStatusCode("/simulator/start");
 
-        var response = await client.PostAsync(
-            "/simulator/start",
-            content: null);
-
-        Assert.Equal(
-            HttpStatusCode.Conflict,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, statusCode);
     }
 
     [Fact]
     public async Task Start_WhenBatteryBelow5Percent_ReturnsConflict()
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        await PostOk("/simulator/connect");
+        await PostOk("/simulator/battery/4");
 
-        var connectResponse = await client.PostAsync(
-            "/simulator/connect",
-            content: null);
+        var statusCode = await PostForStatusCode("/simulator/start");
 
-        connectResponse.EnsureSuccessStatusCode();
-
-        var batteryResponse = await client.PostAsync(
-            "/simulator/battery/4",
-            content: null);
-
-        batteryResponse.EnsureSuccessStatusCode();
-
-        var response = await client.PostAsync(
-            "/simulator/start",
-            content: null);
-
-        Assert.Equal(
-            HttpStatusCode.Conflict,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, statusCode);
     }
 
     [Fact]
     public async Task Start_With5PercentBattery_Succeeds()
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        await PostOk("/simulator/connect");
+        await PostOk("/simulator/battery/5");
 
-        var connectResponse = await client.PostAsync(
-            "/simulator/connect",
-            content: null);
+        var status = await PostOk("/simulator/start");
 
-        connectResponse.EnsureSuccessStatusCode();
-
-        var batteryResponse = await client.PostAsync(
-            "/simulator/battery/5",
-            content: null);
-
-        batteryResponse.EnsureSuccessStatusCode();
-
-        var response = await client.PostAsync(
-            "/simulator/start",
-            content: null);
-
-        response.EnsureSuccessStatusCode();
-
-        var status = await response.Content
-            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
-
-        Assert.NotNull(status);
         Assert.Equal(DeviceMode.Running, status.Mode);
         Assert.Equal(5, status.BatteryPercentage);
     }
@@ -225,31 +130,11 @@ public sealed class DeviceApiTests
     [Fact]
     public async Task Stop_WhenRunning_ChangesDeviceToIdle()
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        await PostOk("/simulator/connect");
+        await PostOk("/simulator/start");
 
-        var connectResponse = await client.PostAsync(
-            "/simulator/connect",
-            content: null);
+        var status = await PostOk("/simulator/stop");
 
-        connectResponse.EnsureSuccessStatusCode();
-
-        var startResponse = await client.PostAsync(
-            "/simulator/start",
-            content: null);
-
-        startResponse.EnsureSuccessStatusCode();
-
-        var response = await client.PostAsync(
-            "/simulator/stop",
-            content: null);
-
-        response.EnsureSuccessStatusCode();
-
-        var status = await response.Content
-            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
-
-        Assert.NotNull(status);
         Assert.Equal(DeviceMode.Idle, status.Mode);
         Assert.True(status.Connected);
     }
@@ -257,37 +142,19 @@ public sealed class DeviceApiTests
     [Fact]
     public async Task Stop_WhenIdle_ReturnsConflict()
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        await PostOk("/simulator/connect");
 
-        var connectResponse = await client.PostAsync(
-            "/simulator/connect",
-            content: null);
+        var statusCode = await PostForStatusCode("/simulator/stop");
 
-        connectResponse.EnsureSuccessStatusCode();
-
-        var response = await client.PostAsync(
-            "/simulator/stop",
-            content: null);
-
-        Assert.Equal(
-            HttpStatusCode.Conflict,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, statusCode);
     }
 
     [Fact]
     public async Task Stop_WhenOffline_ReturnsConflict()
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        var statusCode = await PostForStatusCode("/simulator/stop");
 
-        var response = await client.PostAsync(
-            "/simulator/stop",
-            content: null);
-
-        Assert.Equal(
-            HttpStatusCode.Conflict,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, statusCode);
     }
 
     // Disconnect
@@ -295,25 +162,10 @@ public sealed class DeviceApiTests
     [Fact]
     public async Task Disconnect_WhenConnected_ChangesDeviceToOffline()
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        await PostOk("/simulator/connect");
 
-        var connectResponse = await client.PostAsync(
-            "/simulator/connect",
-            content: null);
+        var status = await PostOk("/simulator/disconnect");
 
-        connectResponse.EnsureSuccessStatusCode();
-
-        var response = await client.PostAsync(
-            "/simulator/disconnect",
-            content: null);
-
-        response.EnsureSuccessStatusCode();
-
-        var status = await response.Content
-            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
-
-        Assert.NotNull(status);
         Assert.Equal(DeviceMode.Offline, status.Mode);
         Assert.False(status.Connected);
     }
@@ -321,31 +173,11 @@ public sealed class DeviceApiTests
     [Fact]
     public async Task Disconnect_WhenRunning_ChangesDeviceToOffline()
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        await PostOk("/simulator/connect");
+        await PostOk("/simulator/start");
 
-        var connectResponse = await client.PostAsync(
-            "/simulator/connect",
-            content: null);
+        var status = await PostOk("/simulator/disconnect");
 
-        connectResponse.EnsureSuccessStatusCode();
-
-        var startResponse = await client.PostAsync(
-            "/simulator/start",
-            content: null);
-
-        startResponse.EnsureSuccessStatusCode();
-
-        var response = await client.PostAsync(
-            "/simulator/disconnect",
-            content: null);
-
-        response.EnsureSuccessStatusCode();
-
-        var status = await response.Content
-            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
-
-        Assert.NotNull(status);
         Assert.Equal(DeviceMode.Offline, status.Mode);
         Assert.False(status.Connected);
     }
@@ -353,58 +185,47 @@ public sealed class DeviceApiTests
     [Fact]
     public async Task Disconnect_WhenFaulted_PowerCyclesDevice()
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        await PostOk("/simulator/connect");
+        await PostOk("/simulator/fault");
 
-        var connectResponse = await client.PostAsync(
-            "/simulator/connect",
-            content: null);
+        var disconnected = await PostOk("/simulator/disconnect");
 
-        connectResponse.EnsureSuccessStatusCode();
-
-        var faultResponse = await client.PostAsync(
-            "/simulator/fault",
-            content: null);
-
-        faultResponse.EnsureSuccessStatusCode();
-
-        var disconnectResponse = await client.PostAsync(
-            "/simulator/disconnect",
-            content: null);
-
-        disconnectResponse.EnsureSuccessStatusCode();
-
-        var disconnected = await disconnectResponse.Content
-            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
-
-        Assert.NotNull(disconnected);
         Assert.Equal(DeviceMode.Offline, disconnected.Mode);
         Assert.False(disconnected.Connected);
 
-        var reconnectResponse = await client.PostAsync(
-            "/simulator/connect",
-            content: null);
+        var reconnected = await PostOk("/simulator/connect");
 
-        reconnectResponse.EnsureSuccessStatusCode();
-
-        var reconnected = await reconnectResponse.Content
-            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
-
-        Assert.NotNull(reconnected);
         Assert.Equal(DeviceMode.Idle, reconnected.Mode);
     }
 
     // Battery
 
-    [Fact]
-    public async Task SetBattery_WithValidPercentage_UpdatesBattery()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(75)]
+    [InlineData(100)]
+    public async Task SetBattery_WithValidPercentage_UpdatesBattery(int percentage)
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        var status = await PostOk($"/simulator/battery/{percentage}");
 
-        var response = await client.PostAsync(
-            "/simulator/battery/75",
-            content: null);
+        Assert.Equal(percentage, status.BatteryPercentage);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(101)]
+    public async Task SetBattery_OutOfRange_ReturnsBadRequest(int percentage)
+    {
+        var statusCode = await PostForStatusCode($"/simulator/battery/{percentage}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, statusCode);
+    }
+
+    // Helpers
+
+    private async Task<DeviceStatus> PostOk(string url)
+    {
+        var response = await _client.PostAsync(url, content: null);
 
         response.EnsureSuccessStatusCode();
 
@@ -412,74 +233,25 @@ public sealed class DeviceApiTests
             .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
 
         Assert.NotNull(status);
-        Assert.Equal(75, status.BatteryPercentage);
+
+        return status;
     }
 
-    [Fact]
-    public async Task SetBattery_With0Percent_UpdatesBattery()
+    private async Task<HttpStatusCode> PostForStatusCode(string url)
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        var response = await _client.PostAsync(url, content: null);
 
-        var response = await client.PostAsync(
-            "/simulator/battery/0",
-            content: null);
+        return response.StatusCode;
+    }
 
-        response.EnsureSuccessStatusCode();
-
-        var status = await response.Content
-            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
+    private async Task<DeviceStatus> GetDeviceStatus()
+    {
+        var status = await _client.GetFromJsonAsync<DeviceStatus>(
+            "/device/status",
+            JsonOptions);
 
         Assert.NotNull(status);
-        Assert.Equal(0, status.BatteryPercentage);
-    }
 
-    [Fact]
-    public async Task SetBattery_With100Percent_UpdatesBattery()
-    {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
-
-        var response = await client.PostAsync(
-            "/simulator/battery/100",
-            content: null);
-
-        response.EnsureSuccessStatusCode();
-
-        var status = await response.Content
-            .ReadFromJsonAsync<DeviceStatus>(JsonOptions);
-
-        Assert.NotNull(status);
-        Assert.Equal(100, status.BatteryPercentage);
-    }
-
-    [Fact]
-    public async Task SetBattery_Below0_ReturnsBadRequest()
-    {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
-
-        var response = await client.PostAsync(
-            "/simulator/battery/-1",
-            content: null);
-
-        Assert.Equal(
-            HttpStatusCode.BadRequest,
-            response.StatusCode);
-    }
-
-    [Fact]
-    public async Task SetBattery_Above100_ReturnsBadRequest()
-    {
-        using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
-
-        var response = await client.PostAsync(
-            "/simulator/battery/101",
-            content: null);
-
-        Assert.Equal(
-            HttpStatusCode.BadRequest,
-            response.StatusCode);
+        return status;
     }
 }
