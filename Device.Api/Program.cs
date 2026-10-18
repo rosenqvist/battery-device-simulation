@@ -14,92 +14,42 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 var app = builder.Build();
 
-app.MapGet("/device/status", (DeviceSimulator device) =>
-{
-    return Results.Ok(device.GetStatus());
-});
+app.MapGet("/device/status", (DeviceSimulator device) => Results.Ok(device.GetStatus()));
 
-app.MapPost("/simulator/connect", (DeviceSimulator device) =>
-{
-    try
-    {
-        return Results.Ok(device.Connect());
-    }
-    catch (InvalidOperationException ex)
-    {
-        return Results.Conflict(ex.Message);
-    }
-});
+var simulator = app.MapGroup("/simulator");
 
-app.MapPost("/simulator/start", (DeviceSimulator device) =>
-{
-    try
-    {
-        return Results.Ok(device.Start());
-    }
-    catch (InvalidOperationException ex)
-    {
-        return Results.Conflict(ex.Message);
-    }
-});
+simulator.MapPost("/connect", (DeviceSimulator device) => Execute(device.Connect));
 
-app.MapPost("/simulator/stop", (DeviceSimulator device) =>
-{
-    try
-    {
-        return Results.Ok(device.Stop());
-    }
-    catch (InvalidOperationException ex)
-    {
-        return Results.Conflict(ex.Message);
-    }
-});
+simulator.MapPost("/start", (DeviceSimulator device) => Execute(device.Start));
 
-app.MapPost("/simulator/fault", (DeviceSimulator device) =>
-{
-    try
-    {
-        return Results.Ok(device.Fault());
-    }
-    catch (InvalidOperationException ex)
-    {
-        return Results.Conflict(ex.Message);
-    }
-});
+simulator.MapPost("/stop", (DeviceSimulator device) => Execute(device.Stop));
 
-app.MapPost("/simulator/reset", (DeviceSimulator device) =>
-{
-    try
-    {
-        return Results.Ok(device.Reset());
-    }
-    catch (InvalidOperationException ex)
-    {
-        return Results.Conflict(ex.Message);
-    }
-});
+simulator.MapPost("/fault", (DeviceSimulator device) => Execute(device.Fault));
 
-app.MapPost("/simulator/disconnect", (DeviceSimulator device) =>
-{
-    return Results.Ok(device.Disconnect());
-});
+simulator.MapPost("/reset", (DeviceSimulator device) => Execute(device.Reset));
 
-app.MapPost("/simulator/battery/{percentage:int}", (
-    int percentage,
-    DeviceSimulator device) =>
-{
-    try
-    {
-        return Results.Ok(device.SetBattery(percentage));
-    }
-    catch (ArgumentOutOfRangeException)
-    {
-        return Results.BadRequest(
-            "Battery percentage must be between 0 and 100.");
-    }
-});
+simulator.MapPost("/disconnect", (DeviceSimulator device) => Execute(device.Disconnect));
+
+simulator.MapPost("/battery/{percentage:int}", (int percentage, DeviceSimulator device) =>
+    Execute(() => device.SetBattery(percentage)));
 
 app.Run();
+
+static IResult Execute(Func<DeviceStatus> action)
+{
+    try
+    {
+        return Results.Ok(action());
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(ex.Message);
+    }
+    catch (ArgumentOutOfRangeException ex)
+    {
+        return Results.BadRequest(ex.Message);
+    }
+}
 
 public partial class Program
 {
