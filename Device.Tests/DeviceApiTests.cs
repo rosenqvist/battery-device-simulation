@@ -196,7 +196,7 @@ public sealed class DeviceApiTests : IDisposable
 
         Assert.Equal(DeviceMode.Faulted, status.Mode);
     }
-    
+
     // Battery
 
     [Theory]
