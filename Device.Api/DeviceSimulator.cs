@@ -104,9 +104,10 @@ public sealed class DeviceSimulator
 
     public DeviceStatus Disconnect()
     {
-        if (Mode == DeviceMode.Running)
+        if (Mode == DeviceMode.Faulted)
         {
-            Stop();
+            throw new InvalidOperationException(
+                "Device is faulted and must be reset before disconnecting.");
         }
 
         Mode = DeviceMode.Offline;

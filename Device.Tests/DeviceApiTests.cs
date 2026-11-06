@@ -183,21 +183,20 @@ public sealed class DeviceApiTests : IDisposable
     }
 
     [Fact]
-    public async Task Disconnect_WhenFaulted_PowerCyclesDevice()
+    public async Task Disconnect_WhenFaulted_ReturnsConflictAndStaysFaulted()
     {
         await PostOk("/simulator/connect");
         await PostOk("/simulator/fault");
 
-        var disconnected = await PostOk("/simulator/disconnect");
+        var statusCode = await PostForStatusCode("/simulator/disconnect");
 
-        Assert.Equal(DeviceMode.Offline, disconnected.Mode);
-        Assert.False(disconnected.Connected);
+        Assert.Equal(HttpStatusCode.Conflict, statusCode);
 
-        var reconnected = await PostOk("/simulator/connect");
+        var status = await GetDeviceStatus();
 
-        Assert.Equal(DeviceMode.Idle, reconnected.Mode);
+        Assert.Equal(DeviceMode.Faulted, status.Mode);
     }
-
+    
     // Battery
 
     [Theory]
