@@ -27,6 +27,17 @@ public sealed class DeviceSimulator
 
     public DeviceStatus Connect()
     {
+        if (Mode == DeviceMode.Faulted)
+        {
+            throw new InvalidOperationException(
+                "Device is faulted and must be reset before connecting.");
+        }
+
+        if (Mode != DeviceMode.Offline)
+        {
+            return GetStatus();
+        }
+
         Mode = DeviceMode.Idle;
 
         return GetStatus();
@@ -93,9 +104,10 @@ public sealed class DeviceSimulator
 
     public DeviceStatus Disconnect()
     {
-        if (Mode == DeviceMode.Running)
+        if (Mode == DeviceMode.Faulted)
         {
-            Stop();
+            throw new InvalidOperationException(
+                "Device is faulted and must be reset before disconnecting.");
         }
 
         Mode = DeviceMode.Offline;
